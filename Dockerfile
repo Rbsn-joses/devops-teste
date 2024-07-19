@@ -1,10 +1,9 @@
 FROM node:14-alpine
 
 WORKDIR /app
-COPY . /app
 RUN npm install
 USER node
-COPY --chown=node:node . .
+COPY --chown=node:node ./app/* .
 
 EXPOSE 3000
 
