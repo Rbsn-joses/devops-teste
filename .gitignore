@@ -2,3 +2,4 @@
 aws
 *terraform*
 .terraform**
+**tst.sh**
