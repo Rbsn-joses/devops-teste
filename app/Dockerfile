@@ -1,7 +1,7 @@
 FROM node:14-alpine
 
 WORKDIR /app
-COPY . .
+COPY . /app
 RUN npm install
 USER node
 COPY --chown=node:node . .
