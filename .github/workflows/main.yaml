@@ -23,6 +23,7 @@ jobs:
       # Step 3: Install dependencies and run tests
       - name: Install dependencies and run tests
         run: |
+          cd app
           npm install
           npm test
 
