@@ -55,6 +55,12 @@ jobs:
           USER_NAME: ${{ secrets.AWS_HOST_EC2_USER }}
         run: |
           echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
-          ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME}
-            docker stop $(docker ps -q) || true &&
-            docker run -d -p 3000:3000 ${{ secrets.DOCKER_USERNAME }}/devops-teste:${{ github.run_id }}
+          ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} '
+           if docker ps --filter "name=devops-teste" --format "{{.Names}}" ; then
+              echo "Container is running, stopping container..."
+              docker stop $(docker ps --filter "name=devops-teste" --format "{{.ID}}")
+            else
+              echo "Container is not running."
+            fi &&
+            docker run -d --name devops-teste -p 3000:3000 ${{ secrets.DOCKER_USERNAME }}/devops-teste:${{ github.run_id }}
+          '
