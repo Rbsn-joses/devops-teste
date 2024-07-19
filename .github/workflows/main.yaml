@@ -8,44 +8,52 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    steps:
-      -
-        name: Checkout
-        uses: actions/checkout@v3
-      -
-        name: Test
-        needs: checkout
-        use: app
-        with:
-          node-version: 14.x
-        run: npm install && npm test
 
-      -
-        name: Login to Docker Hub
+    steps:
+      # Step 1: Checkout code
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      # Step 2: Set up Node
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: 14
+
+      # Step 3: Install dependencies and run tests
+      - name: Install dependencies and run tests
+        run: |
+          npm install
+          npm test
+
+      # Step 4: Login to Docker Hub
+      - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-      -
-        name: Set up Docker Buildx
+
+      # Step 5: Set up Docker Buildx
+      - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
-      -
-        name: Build and push
+
+      # Step 6: Build and push Docker image
+      - name: Build and push Docker image
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: app/Dockerfile
+          file: ./app/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/devops-teste:${{ github.run_id }}
-      - 
-        name:  Deploy ec2
+
+      # Step 7: Deploy to EC2
+      - name: Deploy to EC2
         env:
-            PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
-            HOSTNAME: ${{secrets.AWS_HOST_EC2}}
-            USER_NAME: ${{secrets.AWS_HOST_EC2_USER}}
+          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+          HOSTNAME: ${{ secrets.AWS_HOST_EC2 }}
+          USER_NAME: ${{ secrets.AWS_HOST_EC2_USER }}
         run: |
           echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
           ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} '
-            &&
             docker stop $(docker ps -q) || true &&
-            docker run -d -p 3000:3000 ${{ secrets.DOCKER_USERNAME }}/devops-teste:${{ github.run_id }} 
+            docker run -d -p 3000:3000 ${{ secrets.DOCKER_USERNAME }}/devops-teste:${{ github.run_id }}
