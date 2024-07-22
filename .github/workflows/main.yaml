@@ -56,11 +56,11 @@ jobs:
         run: |
           echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
           ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} '
-           if docker ps --filter "name=devops-teste" --format "{{.Names}}" ; then
+           if docker ps | grep devops-teste" ; then
               echo "Container não encontrado, subindo."
               docker run -d --name devops-teste -p 3000:3000 ${{ secrets.DOCKER_USERNAME }}/devops-teste:${{ github.run_id }}
             else
-              docker stop $(docker ps --filter "name=devops-teste" --format "{{.ID}}")
+              docker stop $(docker ps | grep devops-teste")
               docker container rm devops-teste
               docker run -d --name devops-teste -p 3000:3000 ${{ secrets.DOCKER_USERNAME }}/devops-teste:${{ github.run_id }}
 
