@@ -6,27 +6,29 @@ on:
       - "*"
 
 jobs:
-  build:
+  checkout:
     runs-on: ubuntu-latest
-
     steps:
-      # Step 1: Checkout code
+        # Step 1: Checkout code
       - name: Checkout
         uses: actions/checkout@v3
-
+  test:
+    runs-on: ubuntu-latest
+    steps:
       # Step 2: Set up Node
       - name: Set up Node.js
         uses: actions/setup-node@v2
         with:
           node-version: 14
-
       # Step 3: Install dependencies and run tests
       - name: Install dependencies and run tests
         run: |
           cd app
           npm install
           npm test
-
+  build:
+    runs-on: ubuntu-latest
+    steps:
       # Step 4: Login to Docker Hub
       - name: Login to Docker Hub
         uses: docker/login-action@v2
@@ -46,7 +48,9 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/devops-teste:${{ github.run_id }}
-
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
       # Step 7: Deploy to EC2
       - name: Deploy to EC2
         env:
@@ -55,16 +59,18 @@ jobs:
           USER_NAME: ${{ secrets.AWS_HOST_EC2_USER }}
         run: |
           echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
-          ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} '
-           if docker ps | grep devops-teste" ; then
-              echo "Container não encontrado, subindo."
-              docker run -d --name devops-teste -p 3000:3000 ${{ secrets.DOCKER_USERNAME }}/devops-teste:${{ github.run_id }}
-            else
-              docker stop $(docker ps | grep devops-teste")
-              docker container rm devops-teste
-              docker run -d --name devops-teste -p 3000:3000 ${{ secrets.DOCKER_USERNAME }}/devops-teste:${{ github.run_id }}
-
-
-            fi
+          ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} '    
+          if docker container inspect devops-teste > /dev/null 2>&1; then
+            echo "Container devops-teste already running, stopping"
+            docker stop devops-teste || true  # Ignore potential errors during stop
+            echo "Container devops-teste recreating with new image"
+            docker rm devops-teste
+            docker run -d --name devops-teste -p 3000:3000 ${{ secrets.DOCKER_USERNAME }}/devops-teste:${{ github.run_id }}
+            echo "Container is running"
+            docker ps
+          else
+            echo "Starting container devops-teste..."
+            docker run -d --name devops-teste -p 3000:3000 ${{ secrets.DOCKER_USERNAME }}/devops-teste:${{ github.run_id }}
+          fi
             
           '
