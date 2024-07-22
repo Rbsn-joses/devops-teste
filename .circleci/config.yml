@@ -1,7 +1,15 @@
 version: 2.1
 jobs:
+  test:
+    docker:
+      - image: cimg/base:stable
+    steps:
+    - run:
+        name: Run tests
+        command: |
+          npm test
   build:
-    working_directory: ./app
+    working_directory: .
     docker:
       - image: cimg/base:2022.09
         auth:
@@ -9,21 +17,30 @@ jobs:
           password: $DOCKER_PASSWORD
     steps:
       - checkout
-      - setup_remote_docker:
-          docker_layer_caching: true
-      - run:
-          name: Run tests
-          command: |
-            npm test
       - run:
           name: Build Docker image
           command: |
-            TAG=0.1.$CIRCLE_BUILD_NUM
-            docker build -t $DOCKER_USERNAME/circleci-new-docker-example:$TAG .
+            TAG=${CIRCLE_SHA1}
+            docker build -t $DOCKER_USERNAME/circleci-devops-teste:$TAG .
       - run:
           name: Push application Docker image
           command: |
-            TAG=0.1.$CIRCLE_BUILD_NUM
+            TAG=${CIRCLE_SHA1}
             echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
-            docker push $DOCKER_USERNAME/circleci-new-docker-example:$TAG
+            docker push $DOCKER_USERNAME/circleci-devops-teste:$TAG
+      - run:
+          name: Deploy to ecs
+          command: |
+            TAG=${CIRCLE_SHA1}
+            echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+            docker push $DOCKER_USERNAME/circleci-devops-teste:$TAG
+    deploy-to-ecs:
+      jobs:
+        - aws-ecs/deploy-service-update: # orb built-in job
+          requires:
+            - build
+          family: '${MY_APP_PREFIX}-service'
+          cluster: '${ECS_CLUSTER}'
+          container-image-name-updates: 'container=${MY_APP_PREFIX}-service,tag=${CIRCLE_SHA1}'
+      
       
